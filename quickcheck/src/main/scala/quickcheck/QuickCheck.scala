@@ -20,10 +20,22 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
     findMin(h) == min
   }
 
-  property("minMeld") = forAll { (h1: H, h2: H) => 
+  property("minMeld1") = forAll { (h1: H, h2: H) => 
     val min = Math.min(findMin(h1), findMin(h2))
     val h = meld(h1, h2)
     findMin(h) == min
+  }
+
+  property("minMeld2") = forAll { (a:Int, b: Int) =>
+    val h = insert(a, empty)
+    val i = insert(b, empty)
+    val merged = meld(h, i)
+    findMin(merged) == (if (a > b) b else a)
+  }
+
+  property("empty") = forAll { a:Int =>
+    val h = insert(a, empty)
+    deleteMin(h) == empty
   }
 
   property("gen1") = forAll { (h: H) =>
@@ -50,11 +62,38 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
     sorted(ls) == true
   }
 
+  property("deleteMin3") = forAll { (h: H) =>
+    var heap = h
+    var flag = true
+    while(!isEmpty(heap)) {
+      val i = findMin(heap)
+      heap = deleteMin(heap)
+      if (!isEmpty(heap) && i > findMin(heap)) {
+        flag = false
+      }
+    }
+    flag
+  }
+
+  property("order of mins") = forAll { (h:H) =>
+    toList(h).zip(toList(h).drop(1)).forall {
+      case (x, y) => x <= y
+    }
+  }
+
+  property("associative meld") = forAll { (h:H, i:H, j:H) =>
+    val a = meld(meld(h, i), j)
+    val b = meld(h, meld(i, j))
+    toList(a) == toList(b)
+  }
+
   lazy val genHeap: Gen[H] = for {
     i <- arbitrary[Int]
     h <- oneOf(const(empty), genHeap)
   } yield insert(i, h)
 
   implicit lazy val arbHeap: Arbitrary[H] = Arbitrary(genHeap)
+
+  def toList(h: H): List[Int] = if (isEmpty(h)) Nil else findMin(h) :: toList(deleteMin(h))
 
 }
